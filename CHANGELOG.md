@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.2.1] - 2026-08-30
 
 ### Added
-- The setup form now also suggests the two connection ports alongside the host when a TellStick-like add-on is matched (see 0.2.0) -- the michaelarnauts add-on's socat bridge uses fixed ports (50800/50801) hardcoded in its own run script, not something an installer can reconfigure, so they're as reliable a suggestion as the hostname itself. Still just a suggestion, not forced.
+- The setup form now suggests the two connection ports (50800/50801) unconditionally in network mode, not just when a TellStick-like add-on is detected -- they're the michaelarnauts add-on's fixed, non-configurable socat-bridge ports, a reasonable default for network mode generally, and this way the ports still show something sensible even if the add-on-detection lookup (see 0.2.0, for the host suggestion) doesn't find a match. Still just a suggestion, not forced.
 
 ## [0.2.0] - 2026-08-30
 

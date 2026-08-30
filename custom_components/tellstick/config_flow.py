@@ -77,25 +77,40 @@ _ADDON_PORT_EVENTS = 50801
 
 
 def _suggested_connection(hass: HomeAssistant) -> dict[str, str | int]:
-    """Suggest host+ports if a TellStick-like add-on is installed under Supervisor.
+    """Suggest connection values for the form.
 
-    Only meaningful on Supervisor (HA OS/Supervised) installs -- Core/Container
-    installs have no add-ons at all, is_hassio() guards against that. Matches
-    by slug suffix ("_tellstick") rather than name/repository, since slugs are
-    the one thing guaranteed present and not subject to localization/formatting
-    differences; third-party add-on slugs are repo-hash-prefixed and therefore
-    not something this integration can hardcode a single expected value for.
+    Ports are suggested unconditionally: 50800/50801 aren't a tellcorenet
+    default (TellCoreClient/TellCoreServer require them as plain constructor
+    args, no fallback), but they're the fixed, non-configurable ports the
+    michaelarnauts add-on always uses, so they're a reasonable starting point
+    for network mode generally, not just when that specific add-on is found.
+    This also means the ports still show something sensible even if the
+    add-on-detection lookup below ever fails to match for some reason.
+
+    Host has no such universal default, so it's only suggested when a
+    TellStick-like add-on is actually found installed under Supervisor.
+    Only meaningful there -- Core/Container installs have no add-ons at all,
+    is_hassio() guards against that. Matches by slug suffix ("_tellstick")
+    rather than name/repository, since slugs are the one thing guaranteed
+    present and not subject to localization/formatting differences;
+    third-party add-on slugs are repo-hash-prefixed and therefore not
+    something this integration can hardcode a single expected value for.
+
+    These are suggested VALUES only (via add_suggested_values_to_schema), not
+    voluptuous field defaults -- a real default= here would break the
+    host+port "both or neither" Inclusive grouping, silently injecting ports
+    even when someone left everything blank for local mode.
     """
-    if not is_hassio(hass):
-        return {}
-    for addon in hass.data.get(DATA_ADDONS_LIST) or []:
-        if addon.slug.lower().endswith("_tellstick"):
-            return {
-                CONF_HOST: hostname_from_addon_slug(addon.slug),
-                CONF_PORT_CLIENT: _ADDON_PORT_CLIENT,
-                CONF_PORT_EVENTS: _ADDON_PORT_EVENTS,
-            }
-    return {}
+    suggested: dict[str, str | int] = {
+        CONF_PORT_CLIENT: _ADDON_PORT_CLIENT,
+        CONF_PORT_EVENTS: _ADDON_PORT_EVENTS,
+    }
+    if is_hassio(hass):
+        for addon in hass.data.get(DATA_ADDONS_LIST) or []:
+            if addon.slug.lower().endswith("_tellstick"):
+                suggested[CONF_HOST] = hostname_from_addon_slug(addon.slug)
+                break
+    return suggested
 
 
 def _test_connection(host: str | None, ports: list[int] | None) -> None:
