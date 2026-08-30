@@ -1,2 +1,25 @@
-# hass_tellstick
-Home Assistant integration for Telldus Tellstick devices (433 MHz).
+# Tellstick (config flow)
+
+A fork of Home Assistant core's built-in [`tellstick`](https://www.home-assistant.io/integrations/tellstick/) integration, replacing its YAML-only setup with a proper config flow -- including reconfigure and automatic import of existing `tellstick:` YAML config.
+
+Reuses the same `tellstick` domain as core's integration on purpose: this is meant to *replace* it, not run alongside it. Home Assistant's own domain-uniqueness rules take care of that -- installing this via HACS overrides the core integration.
+
+## Why fork instead of wait for upstream
+
+Core's `tellstick` integration is `quality_scale: legacy` with no config flow, and has been for years. The actual device logic (`tellcore-py` talking to a local `telldusd`) works fine and isn't reimplemented here -- only the setup/config layer changed.
+
+## What's different from core
+
+- **Config flow** for initial setup (checks a `telldusd` is actually reachable before creating the entry, rather than accepting blind YAML).
+- **Reconfigure flow** to change host/port and the signal-repetition count without deleting and re-adding the integration.
+- **YAML import** -- existing `tellstick:` config is picked up automatically and converted to a config entry, with a repair issue prompting you to remove the YAML afterwards.
+- **Local or network `telldusd`.** Leave host/port blank for a local `telldusd`; fill in both to reach one over the network (e.g. running in its own add-on/container).
+- **Sensors are auto-discovered, with confirm/ignore.** Core's `tellstick` sensor platform required pre-declaring every sensor's ID/name via YAML (`only_named`). This fork instead listens live for new sensors and raises a repair issue per newly-heard one -- nothing gets added until you explicitly confirm it, since 433MHz reception is promiscuous and can pick up neighbouring equipment, not just your own.
+
+## Requirements
+
+A TellStick (or TellStick Duo/ZNet) reachable via `telldusd` -- e.g. the [Telldus add-on](https://github.com/michaelarnauts/home-assistant-tellstick-addon) if you're running Home Assistant OS/Supervised.
+
+## Installation
+
+Via [HACS](https://hacs.xyz/), as a custom repository (category: Integration) pointing at this repo. Then **Settings → Devices & Services → Add Integration → Tellstick**.

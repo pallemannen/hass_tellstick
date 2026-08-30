@@ -1,0 +1,33 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "This looks for a TellStick USB dongle via a locally running telldusd. There's nothing to fill in -- just confirm you want to set it up."
+      },
+      "reconfigure": {
+        "description": "Local mode has no host or port to change -- this only controls how many times each RF command is repeated for reliability.",
+        "data": {
+          "signal_repetitions": "Signal repetitions"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach a local telldusd. Make sure the TellStick is plugged in and a TellStick daemon (e.g. the Telldus add-on) is running."
+    },
+    "abort": {
+      "already_configured": "Tellstick is already configured. Only one TellStick is supported per Home Assistant instance.",
+      "reconfigure_successful": "Reconfiguration was successful.",
+      "yaml_net_mode_unsupported": "Your existing `tellstick:` YAML config uses Telldus Live (net mode via host/port), which this integration doesn't support -- it's local-only, talking directly to a TellStick over a local telldusd. Remove the `host`/`port` keys from your YAML, or don't import this config."
+    }
+  },
+  "issues": {
+    "deprecated_yaml": {
+      "title": "The Tellstick YAML configuration is deprecated",
+      "description": "Configuring Tellstick via `configuration.yaml` is deprecated and your config has been imported into the UI automatically. Remove the `tellstick:` section from your YAML files."
+    },
+    "yaml_net_mode_unsupported": {
+      "title": "Tellstick YAML config uses an unsupported mode",
+      "description": "Your `tellstick:` YAML config sets `host`/`port` (Telldus Live / net mode), which this integration doesn't support -- it only talks to a local telldusd. The YAML was not imported. Remove the `host`/`port` keys, or set up Tellstick fresh from the UI instead."
+    }
+  }
+}
