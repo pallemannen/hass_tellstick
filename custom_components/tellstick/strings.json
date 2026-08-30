@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "Leave host and port blank to talk to a local telldusd directly (e.g. a USB TellStick). Fill in both to reach a telldusd over the network instead -- this is NOT Telldus Live/cloud, it's for a remote telldusd whose local socket API has been bridged over TCP (e.g. via socat), such as the Telldus add-on's own network ports.",
+        "description": "Leave host and port blank to talk to a local telldusd directly through USB. Fill in both to reach a telldusd over the network (requires telldusd to be reachable over TCP). The HA add-on app is reached over the network, and should have been autodiscovered, so just use the suggested values.",
         "data": {
           "host": "Host (leave blank for local)",
           "port_client": "Client port",
@@ -10,7 +10,7 @@
         }
       },
       "reconfigure": {
-        "description": "Leave host and port blank for local mode.",
+        "description": "Leave host and port blank to talk to a local telldusd directly through USB. Fill in both to reach a telldusd over the network (requires telldusd to be reachable over TCP). The HA add-on app is reached over the network, and should have been autodiscovered, so just use the suggested values.",
         "data": {
           "host": "Host (leave blank for local)",
           "port_client": "Client port",

@@ -1,9 +1,13 @@
 """Config flow for Tellstick.
 
-Supports local mode (talk to telldusd directly, e.g. via a USB TellStick)
-and network mode (tellcorenet.TellCoreClient bridging to a telldusd
-reachable over TCP -- NOT Telldus Live/cloud, just a remote telldusd's
-local socket API exposed over the network, e.g. via socat).
+Supports local mode (talk to telldusd directly, e.g. via a USB TellStick --
+a normal Telldus install only ever exposes a local UNIX socket, no TCP) and
+network mode (tellcorenet.TellCoreClient bridging to a telldusd whose local
+socket has been bridged over TCP somehow, e.g. via socat -- NOT Telldus
+Live/cloud). The Telldus add-on always needs network mode, even though the
+TellStick is physically plugged into the same machine as Home Assistant --
+Core and the add-on run in separate containers, so from Core's side it's a
+network connection regardless of what's physically in the same cabinet.
 """
 
 from __future__ import annotations
@@ -66,22 +70,51 @@ def _ports_from_input(user_input: dict[str, Any]) -> list[int] | None:
     return [port_client, port_events]
 
 
-def _suggested_host(hass: HomeAssistant) -> str | None:
-    """Suggest a host if a TellStick-like add-on is installed under Supervisor.
+# The michaelarnauts/home-assistant-tellstick-addon bridges its local telldusd
+# out over these two fixed TCP ports via socat, hardcoded in the add-on's own
+# run script -- not exposed as an add-on option, and not remapped through
+# Supervisor's normal per-addon network config either. Since they can't be
+# changed by whoever installed the add-on, they're as reliable a fact about a
+# matched add-on as its hostname is, not a guess.
+_ADDON_PORT_CLIENT = 50800
+_ADDON_PORT_EVENTS = 50801
 
-    Only meaningful on Supervisor (HA OS/Supervised) installs -- Core/Container
-    installs have no add-ons at all, is_hassio() guards against that. Matches
-    by slug suffix ("_tellstick") rather than name/repository, since slugs are
-    the one thing guaranteed present and not subject to localization/formatting
-    differences; third-party add-on slugs are repo-hash-prefixed and therefore
-    not something this integration can hardcode a single expected value for.
+
+def _suggested_connection(hass: HomeAssistant) -> dict[str, str | int]:
+    """Suggest connection values for the form.
+
+    Ports are suggested unconditionally: 50800/50801 aren't a tellcorenet
+    default (TellCoreClient/TellCoreServer require them as plain constructor
+    args, no fallback), but they're the fixed, non-configurable ports the
+    michaelarnauts add-on always uses, so they're a reasonable starting point
+    for network mode generally, not just when that specific add-on is found.
+    This also means the ports still show something sensible even if the
+    add-on-detection lookup below ever fails to match for some reason.
+
+    Host has no such universal default, so it's only suggested when a
+    TellStick-like add-on is actually found installed under Supervisor.
+    Only meaningful there -- Core/Container installs have no add-ons at all,
+    is_hassio() guards against that. Matches by slug suffix ("_tellstick")
+    rather than name/repository, since slugs are the one thing guaranteed
+    present and not subject to localization/formatting differences;
+    third-party add-on slugs are repo-hash-prefixed and therefore not
+    something this integration can hardcode a single expected value for.
+
+    These are suggested VALUES only (via add_suggested_values_to_schema), not
+    voluptuous field defaults -- a real default= here would break the
+    host+port "both or neither" Inclusive grouping, silently injecting ports
+    even when someone left everything blank for local mode.
     """
-    if not is_hassio(hass):
-        return None
-    for addon in hass.data.get(DATA_ADDONS_LIST) or []:
-        if addon.slug.lower().endswith("_tellstick"):
-            return hostname_from_addon_slug(addon.slug)
-    return None
+    suggested: dict[str, str | int] = {
+        CONF_PORT_CLIENT: _ADDON_PORT_CLIENT,
+        CONF_PORT_EVENTS: _ADDON_PORT_EVENTS,
+    }
+    if is_hassio(hass):
+        for addon in hass.data.get(DATA_ADDONS_LIST) or []:
+            if addon.slug.lower().endswith("_tellstick"):
+                suggested[CONF_HOST] = hostname_from_addon_slug(addon.slug)
+                break
+    return suggested
 
 
 def _test_connection(host: str | None, ports: list[int] | None) -> None:
@@ -137,9 +170,7 @@ class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
                     options={CONF_SIGNAL_REPETITIONS: DEFAULT_SIGNAL_REPETITIONS},
                 )
 
-        suggested_values = {}
-        if (suggested_host := _suggested_host(self.hass)) is not None:
-            suggested_values[CONF_HOST] = suggested_host
+        suggested_values = _suggested_connection(self.hass)
 
         return self.async_show_form(
             step_id="user",
