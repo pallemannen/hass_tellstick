@@ -30,6 +30,9 @@
       "entry_type": "Sensor",
       "abort": {
         "use_discovery": "Sensors are added automatically when they're heard broadcasting -- check Settings → System → Repairs for any pending new sensors."
+      },
+      "initiate_flow": {
+        "user": "Add sensor"
       }
     }
   },
