@@ -1,9 +1,13 @@
 """Config flow for Tellstick.
 
-Supports local mode (talk to telldusd directly, e.g. via a USB TellStick)
-and network mode (tellcorenet.TellCoreClient bridging to a telldusd
-reachable over TCP -- NOT Telldus Live/cloud, just a remote telldusd's
-local socket API exposed over the network, e.g. via socat).
+Supports local mode (talk to telldusd directly, e.g. via a USB TellStick --
+a normal Telldus install only ever exposes a local UNIX socket, no TCP) and
+network mode (tellcorenet.TellCoreClient bridging to a telldusd whose local
+socket has been bridged over TCP somehow, e.g. via socat -- NOT Telldus
+Live/cloud). The Telldus add-on always needs network mode, even though the
+TellStick is physically plugged into the same machine as Home Assistant --
+Core and the add-on run in separate containers, so from Core's side it's a
+network connection regardless of what's physically in the same cabinet.
 """
 
 from __future__ import annotations

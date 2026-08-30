@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "description": "Leave host and port blank to talk to a local telldusd directly (e.g. a USB TellStick). Fill in both to reach a telldusd over the network instead -- this is NOT Telldus Live/cloud, it's for a remote telldusd whose local socket API has been bridged over TCP (e.g. via socat), such as the Telldus add-on's own network ports.",
+        "description": "Leave host and port blank to talk to a local telldusd directly (e.g. a USB TellStick). Fill in both to reach a telldusd over the network instead -- this only works if that telldusd's local socket has been bridged over TCP somehow, which the Telldus add-on handles automatically (via socat); if you're running telldusd elsewhere yourself -- a different machine, a different OS -- you'd need to set up an equivalent TCP bridge on your own. Note: if you're using the Telldus add-on, this is \"network\" mode even though the TellStick is physically plugged into the same machine as Home Assistant -- Home Assistant Core and the add-on run in separate containers, so from Core's side it's still a network connection, not a local one, regardless of what's physically in the same cabinet.",
         "data": {
           "host": "Host (leave blank for local)",
           "port_client": "Client port",
