@@ -1,5 +1,7 @@
 # Tellstick (config flow)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?category=Integration&repository=hass_tellstick&owner=pallemannen)
+
 A fork of Home Assistant core's built-in [`tellstick`](https://www.home-assistant.io/integrations/tellstick/) integration, replacing its YAML-only setup with a proper config flow -- including reconfigure and automatic import of existing `tellstick:` YAML config.
 
 Reuses the same `tellstick` domain as core's integration on purpose: this is meant to *replace* it, not run alongside it. Home Assistant's own domain-uniqueness rules take care of that -- installing this via HACS overrides the core integration.
@@ -23,3 +25,7 @@ A TellStick (or TellStick Duo/ZNet) reachable via `telldusd` -- e.g. the [Telldu
 ## Installation
 
 Via [HACS](https://hacs.xyz/), as a custom repository (category: Integration) pointing at this repo. Then **Settings → Devices & Services → Add Integration → Tellstick**.
+
+## License
+
+MIT - see [LICENSE](LICENSE).
