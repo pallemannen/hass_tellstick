@@ -1,4 +1,10 @@
-"""Config flow for Tellstick (local telldusd only, no Telldus Live)."""
+"""Config flow for Tellstick.
+
+Supports local mode (talk to telldusd directly, e.g. via a USB TellStick)
+and network mode (tellcorenet.TellCoreClient bridging to a telldusd
+reachable over TCP -- NOT Telldus Live/cloud, just a remote telldusd's
+local socket API exposed over the network, e.g. via socat).
+"""
 
 from __future__ import annotations
 
@@ -6,108 +12,142 @@ import logging
 from typing import Any
 
 from tellcore.telldus import TelldusCore
+from tellcorenet import TellCoreClient
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_HOST
+from homeassistant.config_entries import (
+    ConfigFlow,
+    ConfigFlowResult,
+    ConfigSubentryFlow,
+    SubentryFlowResult,
+)
+from homeassistant.const import CONF_HOST, CONF_PORT
+from homeassistant.core import callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.typing import ConfigType
 
-from .const import CONF_SIGNAL_REPETITIONS, DEFAULT_SIGNAL_REPETITIONS, DOMAIN
+from .const import (
+    CONF_SIGNAL_REPETITIONS,
+    DEFAULT_SIGNAL_REPETITIONS,
+    DOMAIN,
+    SUBENTRY_TYPE_SENSOR,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
+CONNECTION_SCHEMA = vol.Schema(
+    {
+        vol.Inclusive(CONF_HOST, "net"): cv.string,
+        vol.Inclusive(CONF_PORT, "net"): vol.All(
+            cv.ensure_list, [cv.port], vol.Length(min=2, max=2)
+        ),
+    }
+)
 
-def _test_local_connection() -> int:
-    """Try to reach a local telldusd and return how many devices it knows about.
 
-    Raises OSError if telldusd isn't reachable (mirrors the original
-    integration's own error handling around TelldusCore()).
+def _test_connection(host: str | None, ports: list[int] | None) -> None:
+    """Try to connect, local or network depending on what's given.
+
+    Raises OSError if unreachable (mirrors the original integration's
+    error handling around TelldusCore()).
     """
-    return len(TelldusCore().devices())
+    net_client = None
+    if host:
+        net_client = TellCoreClient(host=host, port_client=ports[0], port_events=ports[1])
+        net_client.start()
+    try:
+        TelldusCore().devices()
+    finally:
+        if net_client:
+            net_client.stop()
 
 
 class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Tellstick (local telldusd only)."""
+    """Handle a config flow for Tellstick."""
 
     VERSION = 1
+
+    @classmethod
+    @callback
+    def async_get_supported_subentry_types(
+        cls, config_entry
+    ) -> dict[str, type[ConfigSubentryFlow]]:
+        """Return subentry types supported by this integration."""
+        return {SUBENTRY_TYPE_SENSOR: SensorSubentryFlowHandler}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Confirm a local telldusd is reachable, then create the entry."""
+        """Set up a connection -- local (leave host/port blank) or network."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
         errors: dict[str, str] = {}
 
         if user_input is not None:
+            host = user_input.get(CONF_HOST)
+            ports = user_input.get(CONF_PORT)
             try:
-                await self.hass.async_add_executor_job(_test_local_connection)
+                await self.hass.async_add_executor_job(_test_connection, host, ports)
             except OSError:
                 errors["base"] = "cannot_connect"
             else:
                 return self.async_create_entry(
                     title="Tellstick",
-                    data={},
+                    data={CONF_HOST: host, CONF_PORT: ports},
                     options={CONF_SIGNAL_REPETITIONS: DEFAULT_SIGNAL_REPETITIONS},
                 )
 
-        return self.async_show_form(step_id="user", errors=errors)
+        return self.async_show_form(
+            step_id="user", data_schema=CONNECTION_SCHEMA, errors=errors
+        )
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Change the signal repeat count for an existing entry.
-
-        Local mode has no host/port to change, so this is the only setting
-        worth reconfiguring.
-        """
+        """Change connection settings and/or the signal repeat count."""
         reconfigure_entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
 
         if user_input is not None:
-            return self.async_update_reload_and_abort(
-                reconfigure_entry,
-                options={
-                    CONF_SIGNAL_REPETITIONS: user_input[CONF_SIGNAL_REPETITIONS]
-                },
-            )
+            host = user_input.get(CONF_HOST)
+            ports = user_input.get(CONF_PORT)
+            try:
+                await self.hass.async_add_executor_job(_test_connection, host, ports)
+            except OSError:
+                errors["base"] = "cannot_connect"
+            else:
+                return self.async_update_reload_and_abort(
+                    reconfigure_entry,
+                    data={CONF_HOST: host, CONF_PORT: ports},
+                    options={
+                        CONF_SIGNAL_REPETITIONS: user_input[CONF_SIGNAL_REPETITIONS]
+                    },
+                )
 
+        schema = CONNECTION_SCHEMA.extend(
+            {
+                vol.Required(
+                    CONF_SIGNAL_REPETITIONS,
+                    default=reconfigure_entry.options.get(
+                        CONF_SIGNAL_REPETITIONS, DEFAULT_SIGNAL_REPETITIONS
+                    ),
+                ): vol.Coerce(int),
+            }
+        )
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_SIGNAL_REPETITIONS,
-                        default=reconfigure_entry.options.get(
-                            CONF_SIGNAL_REPETITIONS, DEFAULT_SIGNAL_REPETITIONS
-                        ),
-                    ): vol.Coerce(int),
-                }
+            data_schema=self.add_suggested_values_to_schema(
+                schema, dict(reconfigure_entry.data)
             ),
+            errors=errors,
         )
 
-    async def async_step_import(
-        self, import_data: ConfigType
-    ) -> ConfigFlowResult:
+    async def async_step_import(self, import_data: ConfigType) -> ConfigFlowResult:
         """Import legacy YAML config (`tellstick:`) into a config entry."""
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
-
-        if CONF_HOST in import_data:
-            # Old YAML pointed at a Telldus Live / tellcore-net host. This
-            # fork is local-only (telldusd via USB), so don't silently create
-            # an entry that ignores what the YAML actually asked for.
-            ir.async_create_issue(
-                self.hass,
-                DOMAIN,
-                "yaml_net_mode_unsupported",
-                is_fixable=False,
-                severity=ir.IssueSeverity.ERROR,
-                translation_key="yaml_net_mode_unsupported",
-                learn_more_url="https://github.com/pallemannen/hass_tellstick",
-            )
-            return self.async_abort(reason="yaml_net_mode_unsupported")
 
         ir.async_create_issue(
             self.hass,
@@ -125,6 +165,27 @@ class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_create_entry(
             title="Tellstick",
-            data={},
+            data={
+                CONF_HOST: import_data.get(CONF_HOST),
+                CONF_PORT: import_data.get(CONF_PORT),
+            },
             options={CONF_SIGNAL_REPETITIONS: signal_repetitions},
         )
+
+
+class SensorSubentryFlowHandler(ConfigSubentryFlow):
+    """Manage sensor subentries.
+
+    Sensors are normally added automatically via the "new sensor detected"
+    repair flow (see repairs.py) -- that's the primary path, since sensors
+    self-identify only once they broadcast. This handler exists mainly so
+    existing sensor subentries render/manage properly in the standard
+    Settings -> Devices -> Tellstick -> sub-items UI (deletion is handled
+    generically by core for any subentry type). Manual add isn't built.
+    """
+
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Explain that sensors are added automatically, not manually."""
+        return self.async_abort(reason="use_discovery")
