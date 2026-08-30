@@ -36,14 +36,31 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# HA's frontend can't render a voluptuous vol.All(cv.ensure_list, ...) list-of-2
+# schema as a form field (it crashes the schema serializer with "Unable to
+# convert schema"), even though that shape is fine for plain YAML validation.
+# So the interactive form uses two separate scalar port fields instead, and
+# the two are combined back into the [client, events] list this integration
+# stores/uses internally (see _ports_from_input below).
+CONF_PORT_CLIENT = "port_client"
+CONF_PORT_EVENTS = "port_events"
+
 CONNECTION_SCHEMA = vol.Schema(
     {
         vol.Inclusive(CONF_HOST, "net"): cv.string,
-        vol.Inclusive(CONF_PORT, "net"): vol.All(
-            cv.ensure_list, [cv.port], vol.Length(min=2, max=2)
-        ),
+        vol.Inclusive(CONF_PORT_CLIENT, "net"): cv.port,
+        vol.Inclusive(CONF_PORT_EVENTS, "net"): cv.port,
     }
 )
+
+
+def _ports_from_input(user_input: dict[str, Any]) -> list[int] | None:
+    """Combine the two form port fields back into the internal [client, events] shape."""
+    port_client = user_input.get(CONF_PORT_CLIENT)
+    port_events = user_input.get(CONF_PORT_EVENTS)
+    if port_client is None or port_events is None:
+        return None
+    return [port_client, port_events]
 
 
 def _test_connection(host: str | None, ports: list[int] | None) -> None:
@@ -87,7 +104,7 @@ class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             host = user_input.get(CONF_HOST)
-            ports = user_input.get(CONF_PORT)
+            ports = _ports_from_input(user_input)
             try:
                 await self.hass.async_add_executor_job(_test_connection, host, ports)
             except OSError:
@@ -112,7 +129,7 @@ class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             host = user_input.get(CONF_HOST)
-            ports = user_input.get(CONF_PORT)
+            ports = _ports_from_input(user_input)
             try:
                 await self.hass.async_add_executor_job(_test_connection, host, ports)
             except OSError:
@@ -136,11 +153,14 @@ class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
                 ): vol.Coerce(int),
             }
         )
+        suggested_values = dict(reconfigure_entry.data)
+        if (existing_ports := suggested_values.pop(CONF_PORT, None)) is not None:
+            suggested_values[CONF_PORT_CLIENT] = existing_ports[0]
+            suggested_values[CONF_PORT_EVENTS] = existing_ports[1]
+
         return self.async_show_form(
             step_id="reconfigure",
-            data_schema=self.add_suggested_values_to_schema(
-                schema, dict(reconfigure_entry.data)
-            ),
+            data_schema=self.add_suggested_values_to_schema(schema, suggested_values),
             errors=errors,
         )
 

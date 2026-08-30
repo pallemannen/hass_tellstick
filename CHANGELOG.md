@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.1.1] - 2026-08-30
+
+### Fixed
+- The network-mode connection form crashed on open with "Config flow could not be loaded: 500 Internal Server Error" — the `port` field's schema (`vol.All(cv.ensure_list, [cv.port], vol.Length(min=2, max=2))`, ported directly from the original YAML schema) isn't something Home Assistant's frontend can serialize into a form field, only something plain YAML validation can use. Split into two separate scalar fields (client port, events port) in the interactive form; internally still combined into the same `[client, events]` list this integration always used, so entry storage and the YAML import path are unaffected.
+
 ## [0.1.0] - 2026-08-30
 
 ### Added

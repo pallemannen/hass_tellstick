@@ -5,14 +5,16 @@
         "description": "Leave host and port blank to talk to a local telldusd directly (e.g. a USB TellStick). Fill in both to reach a telldusd over the network instead -- this is NOT Telldus Live/cloud, it's for a remote telldusd whose local socket API has been bridged over TCP (e.g. via socat), such as the Telldus add-on's own network ports.",
         "data": {
           "host": "Host (leave blank for local)",
-          "port": "Ports (client, events) -- leave blank for local"
+          "port_client": "Client port",
+          "port_events": "Events port"
         }
       },
       "reconfigure": {
         "description": "Leave host and port blank for local mode.",
         "data": {
           "host": "Host (leave blank for local)",
-          "port": "Ports (client, events) -- leave blank for local",
+          "port_client": "Client port",
+          "port_events": "Events port",
           "signal_repetitions": "Signal repetitions"
         }
       }
