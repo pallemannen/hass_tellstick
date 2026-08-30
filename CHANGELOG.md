@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.2] - 2026-08-30
+
+### Fixed
+- Declared `hassio` in `after_dependencies` -- the add-on-detection code (see 0.2.0/0.2.1) imports from `homeassistant.components.hassio`, which hassfest correctly flags as an undeclared dependency if missing. `after_dependencies` (not `dependencies`) since this integration still needs to work fine on non-Supervisor installs where `hassio` isn't available at all.
+
 ## [0.2.1] - 2026-08-30
 
 ### Added
