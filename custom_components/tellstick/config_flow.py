@@ -66,8 +66,18 @@ def _ports_from_input(user_input: dict[str, Any]) -> list[int] | None:
     return [port_client, port_events]
 
 
-def _suggested_host(hass: HomeAssistant) -> str | None:
-    """Suggest a host if a TellStick-like add-on is installed under Supervisor.
+# The michaelarnauts/home-assistant-tellstick-addon bridges its local telldusd
+# out over these two fixed TCP ports via socat, hardcoded in the add-on's own
+# run script -- not exposed as an add-on option, and not remapped through
+# Supervisor's normal per-addon network config either. Since they can't be
+# changed by whoever installed the add-on, they're as reliable a fact about a
+# matched add-on as its hostname is, not a guess.
+_ADDON_PORT_CLIENT = 50800
+_ADDON_PORT_EVENTS = 50801
+
+
+def _suggested_connection(hass: HomeAssistant) -> dict[str, str | int]:
+    """Suggest host+ports if a TellStick-like add-on is installed under Supervisor.
 
     Only meaningful on Supervisor (HA OS/Supervised) installs -- Core/Container
     installs have no add-ons at all, is_hassio() guards against that. Matches
@@ -77,11 +87,15 @@ def _suggested_host(hass: HomeAssistant) -> str | None:
     not something this integration can hardcode a single expected value for.
     """
     if not is_hassio(hass):
-        return None
+        return {}
     for addon in hass.data.get(DATA_ADDONS_LIST) or []:
         if addon.slug.lower().endswith("_tellstick"):
-            return hostname_from_addon_slug(addon.slug)
-    return None
+            return {
+                CONF_HOST: hostname_from_addon_slug(addon.slug),
+                CONF_PORT_CLIENT: _ADDON_PORT_CLIENT,
+                CONF_PORT_EVENTS: _ADDON_PORT_EVENTS,
+            }
+    return {}
 
 
 def _test_connection(host: str | None, ports: list[int] | None) -> None:
@@ -137,9 +151,7 @@ class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
                     options={CONF_SIGNAL_REPETITIONS: DEFAULT_SIGNAL_REPETITIONS},
                 )
 
-        suggested_values = {}
-        if (suggested_host := _suggested_host(self.hass)) is not None:
-            suggested_values[CONF_HOST] = suggested_host
+        suggested_values = _suggested_connection(self.hass)
 
         return self.async_show_form(
             step_id="user",
