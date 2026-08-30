@@ -57,7 +57,7 @@
               "confirm": "Add this sensor",
               "ignore": "Ignore -- not mine"
             },
-            "description": "Heard a new sensor broadcasting: protocol `{protocol}`, model `{model}`, id `{sensor_id}`. TellStick reception picks up anything in range, including a neighbor's equipment -- only add it if it's actually yours."
+            "description": "Heard a new sensor broadcasting: Protocol `{protocol}`, model `{model}`, id `{sensor_id}`. TellStick reception picks up anything in range, including a neighbor's equipment -- only add it if it's actually yours."
           }
         },
         "abort": {
