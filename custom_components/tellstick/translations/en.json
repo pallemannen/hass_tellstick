@@ -33,6 +33,11 @@
       },
       "initiate_flow": {
         "user": "Add sensor"
+      },
+      "step": {
+        "user": {
+          "title": "Add sensor"
+        }
       }
     }
   },
