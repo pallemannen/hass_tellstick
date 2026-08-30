@@ -15,6 +15,8 @@ from tellcore.telldus import TelldusCore
 from tellcorenet import TellCoreClient
 import voluptuous as vol
 
+from homeassistant.components.hassio import hostname_from_addon_slug
+from homeassistant.components.hassio.const import DATA_ADDONS_LIST
 from homeassistant.config_entries import (
     ConfigFlow,
     ConfigFlowResult,
@@ -22,9 +24,10 @@ from homeassistant.config_entries import (
     SubentryFlowResult,
 )
 from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.hassio import is_hassio
 from homeassistant.helpers.typing import ConfigType
 
 from .const import (
@@ -61,6 +64,24 @@ def _ports_from_input(user_input: dict[str, Any]) -> list[int] | None:
     if port_client is None or port_events is None:
         return None
     return [port_client, port_events]
+
+
+def _suggested_host(hass: HomeAssistant) -> str | None:
+    """Suggest a host if a TellStick-like add-on is installed under Supervisor.
+
+    Only meaningful on Supervisor (HA OS/Supervised) installs -- Core/Container
+    installs have no add-ons at all, is_hassio() guards against that. Matches
+    by slug suffix ("_tellstick") rather than name/repository, since slugs are
+    the one thing guaranteed present and not subject to localization/formatting
+    differences; third-party add-on slugs are repo-hash-prefixed and therefore
+    not something this integration can hardcode a single expected value for.
+    """
+    if not is_hassio(hass):
+        return None
+    for addon in hass.data.get(DATA_ADDONS_LIST) or []:
+        if addon.slug.lower().endswith("_tellstick"):
+            return hostname_from_addon_slug(addon.slug)
+    return None
 
 
 def _test_connection(host: str | None, ports: list[int] | None) -> None:
@@ -116,8 +137,16 @@ class TellstickConfigFlow(ConfigFlow, domain=DOMAIN):
                     options={CONF_SIGNAL_REPETITIONS: DEFAULT_SIGNAL_REPETITIONS},
                 )
 
+        suggested_values = {}
+        if (suggested_host := _suggested_host(self.hass)) is not None:
+            suggested_values[CONF_HOST] = suggested_host
+
         return self.async_show_form(
-            step_id="user", data_schema=CONNECTION_SCHEMA, errors=errors
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(
+                CONNECTION_SCHEMA, suggested_values
+            ),
+            errors=errors,
         )
 
     async def async_step_reconfigure(

@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.0] - 2026-08-30
+
+### Added
+- The setup form now suggests a host automatically when a TellStick-like add-on is installed under Supervisor (matched by slug suffix `_tellstick`, converted to its network hostname) — one less thing to look up manually for the common case of connecting to the Telldus add-on's own network-bridged `telldusd`. Only a suggestion, not forced; still leave host/port blank for local mode. Has no effect on non-Supervisor installs (HA Container/Core).
+
 ## [0.1.1] - 2026-08-30
 
 ### Fixed
