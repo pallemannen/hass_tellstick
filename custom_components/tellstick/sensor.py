@@ -6,7 +6,7 @@ see repairs.py for how a subentry gets created (via a confirm/ignore repair
 flow triggered by live detection, never silently). Each subentry becomes one
 HA device with one entity per datatype that sensor actually reports, exactly
 matching the original integration's `sensor_value_descriptions`/`has_value()`
-approach, plus a diagnostic "Last updated" timestamp entity. Protocol/model/id
+approach, plus a diagnostic "Last seen" timestamp entity. Protocol/model/id
 are also set as the device's manufacturer/model/serial_number so that
 identity survives the user renaming the device to something meaningful.
 """
@@ -65,7 +65,7 @@ async def async_setup_entry(
             if tellcore_sensor.has_value(datatype)
         ]
         entities.append(
-            TellstickLastUpdated(subentry.unique_id, tellcore_sensor, device_info)
+            TellstickLastSeen(subentry.unique_id, tellcore_sensor, device_info)
         )
         async_add_entities(entities, True, config_subentry_id=subentry.subentry_id)
 
@@ -91,7 +91,7 @@ class TellstickSensor(SensorEntity):
         self._attr_native_value = self._tellcore_sensor.value(self._datatype).value
 
 
-class TellstickLastUpdated(SensorEntity):
+class TellstickLastSeen(SensorEntity):
     """Most recent time any datatype from this physical sensor was received.
 
     Useful independent of what the individual value entities show -- a
@@ -103,12 +103,12 @@ class TellstickLastUpdated(SensorEntity):
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.TIMESTAMP
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_name = "Last updated"
+    _attr_name = "Last seen"
 
     def __init__(self, sensor_uid, tellcore_sensor, device_info):
-        """Initialize the last-updated sensor."""
+        """Initialize the last-seen sensor."""
         self._tellcore_sensor = tellcore_sensor
-        self._attr_unique_id = f"{sensor_uid}_last_updated"
+        self._attr_unique_id = f"{sensor_uid}_last_seen"
         self._attr_device_info = device_info
 
     def update(self) -> None:

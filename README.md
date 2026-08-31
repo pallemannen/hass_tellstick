@@ -17,7 +17,7 @@ Core's `tellstick` integration is `quality_scale: legacy` with no config flow, a
 - **YAML import** -- existing `tellstick:` config is picked up automatically and converted to a config entry, with a repair issue prompting you to remove the YAML afterwards.
 - **Local or network `telldusd`.** Leave host and port blank to talk to a local `telldusd` directly through USB. Fill in both to reach a `telldusd` over the network (requires `telldusd` to be reachable over TCP). The HA add-on app is reached over the network, and should have been autodiscovered, so just use the suggested values.
 - **Sensors are auto-discovered, with confirm/ignore.** Core's `tellstick` sensor platform required pre-declaring every sensor's ID/name via YAML (`only_named`) to limit the list. This fork instead listens live for new sensors and raises a repair issue per newly-heard one -- nothing gets added until you explicitly confirm it, since 433MHz reception is promiscuous and can pick up neighbouring equipment, not just your own.
-- **Each sensor's device page shows its protocol/model/id (as manufacturer/model/serial_number) and a diagnostic "Last updated" timestamp**, so that identity and freshness stay visible even after you rename the device to something meaningful, and a dead-battery sensor (still showing its last known reading forever) is easy to spot.
+- **Each sensor's device page shows its protocol/model/id (as manufacturer/model/serial_number) and a diagnostic "Last seen" timestamp**, so that identity and freshness stay visible even after you rename the device to something meaningful, and a dead-battery sensor (still showing its last known reading forever) is easy to spot.
 
 ## Requirements
 

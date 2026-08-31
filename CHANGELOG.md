@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ## [0.3.0] - 2026-08-30
 
 ### Added
-- Each sensor device now has a diagnostic "Last updated" timestamp entity, the newest timestamp across every datatype that sensor reports -- useful for spotting a dead/silent sensor (e.g. a flat battery), since the value entities themselves just keep showing their last known reading forever.
+- Each sensor device now has a diagnostic "Last seen" timestamp entity, the newest timestamp across every datatype that sensor reports -- useful for spotting a dead/silent sensor (e.g. a flat battery), since the value entities themselves just keep showing their last known reading forever.
 - Each sensor device's protocol/model/id are now also set as its manufacturer/model/serial_number, so that identity stays visible on the device page even after renaming the device to something meaningful (e.g. "Guest room") -- previously it only existed in the auto-generated device name, which renaming would overwrite.
 
 ## [0.2.2] - 2026-08-30
