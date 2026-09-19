@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.1] - 2026-09-18
+
+### Fixed
+- Renamed `custom_components/tellstick/brands/` to `brand/` (singular). HA Core's `brands` integration reads local custom-integration icons from an exact `brand/` path (`homeassistant/components/brands/__init__.py`) with no fallback to `brands/`, so this integration's own icon was never actually being served - HA was silently falling through to the historical stock icon for the `tellstick` domain from the old core-shipped integration of the same name instead.
+
 ## [0.3.0] - 2026-08-30
 
 ### Added
