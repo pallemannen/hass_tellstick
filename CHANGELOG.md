@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+- Requirements use minimum versions (`tellcore-py>=1.1.3`, `tellcore-net>=0.4`) instead of exact pins, since Home Assistant itself depends on these packages; hassfest now rejects the pins.
+
 ## [0.3.1] - 2026-09-18
 
 ### Fixed
