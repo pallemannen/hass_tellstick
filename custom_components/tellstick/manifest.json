@@ -15,8 +15,8 @@
     "tellcore"
   ],
   "requirements": [
-    "tellcore-py==1.1.3",
-    "tellcore-net==0.4"
+    "tellcore-py>=1.1.3",
+    "tellcore-net>=0.4"
   ],
-  "version": "0.3.1"
+  "version": "0.3.2"
 }
