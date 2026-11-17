@@ -21,7 +21,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import TellstickConfigEntry
-from .const import SENSOR_VALUE_DESCRIPTIONS, SUBENTRY_TYPE_SENSOR
+from .const import SENSOR_VALUE_DESCRIPTIONS, SUBENTRY_TYPE_SENSOR, TELLCORE_LOCK
 
 
 async def async_setup_entry(
@@ -31,16 +31,25 @@ async def async_setup_entry(
 ) -> None:
     """Set up Tellstick sensors, one HA device per confirmed sensor subentry."""
     tellcore_lib = entry.runtime_data.tellcore_lib
-    tellcore_sensors = await hass.async_add_executor_job(tellcore_lib.sensors)
-    sensors_by_uid = {
-        f"{s.protocol}_{s.model}_{s.id}": s for s in tellcore_sensors
-    }
+
+    def _read_sensors():
+        """Every sensor tellcore has heard, with the datatypes each one reports."""
+        with TELLCORE_LOCK:
+            return {
+                f"{s.protocol}_{s.model}_{s.id}": (
+                    s,
+                    [datatype for datatype in SENSOR_VALUE_DESCRIPTIONS if s.has_value(datatype)],
+                )
+                for s in tellcore_lib.sensors()
+            }
+
+    sensors_by_uid = await hass.async_add_executor_job(_read_sensors)
 
     for subentry in entry.subentries.values():
         if subentry.subentry_type != SUBENTRY_TYPE_SENSOR:
             continue
 
-        tellcore_sensor = sensors_by_uid.get(subentry.unique_id)
+        tellcore_sensor, datatypes = sensors_by_uid.get(subentry.unique_id, (None, []))
         if tellcore_sensor is None:
             # Confirmed previously but hasn't broadcast since this restart --
             # nothing to attach entities to yet, it'll pick up next reload
@@ -60,9 +69,8 @@ async def async_setup_entry(
         )
 
         entities = [
-            TellstickSensor(subentry.unique_id, tellcore_sensor, datatype, sensor_info, device_info)
-            for datatype, sensor_info in SENSOR_VALUE_DESCRIPTIONS.items()
-            if tellcore_sensor.has_value(datatype)
+            TellstickSensor(subentry.unique_id, tellcore_sensor, datatype, SENSOR_VALUE_DESCRIPTIONS[datatype], device_info)
+            for datatype in datatypes
         ]
         entities.append(
             TellstickLastSeen(subentry.unique_id, tellcore_sensor, device_info)
@@ -88,7 +96,8 @@ class TellstickSensor(SensorEntity):
 
     def update(self) -> None:
         """Update tellstick sensor."""
-        self._attr_native_value = self._tellcore_sensor.value(self._datatype).value
+        with TELLCORE_LOCK:
+            self._attr_native_value = self._tellcore_sensor.value(self._datatype).value
 
 
 class TellstickLastSeen(SensorEntity):
@@ -113,10 +122,11 @@ class TellstickLastSeen(SensorEntity):
 
     def update(self) -> None:
         """Update to the newest timestamp across every datatype this sensor reports."""
-        timestamps = [
-            self._tellcore_sensor.value(datatype).timestamp
-            for datatype in SENSOR_VALUE_DESCRIPTIONS
-            if self._tellcore_sensor.has_value(datatype)
-        ]
+        with TELLCORE_LOCK:
+            timestamps = [
+                self._tellcore_sensor.value(datatype).timestamp
+                for datatype in SENSOR_VALUE_DESCRIPTIONS
+                if self._tellcore_sensor.has_value(datatype)
+            ]
         if timestamps:
             self._attr_native_value = dt_util.utc_from_timestamp(max(timestamps))

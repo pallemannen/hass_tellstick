@@ -2,6 +2,8 @@
 
 from collections import namedtuple
 
+import threading
+
 import tellcore.constants as tellcore_constants
 
 from homeassistant.components.sensor import SensorDeviceClass
@@ -49,3 +51,11 @@ SENSOR_VALUE_DESCRIPTIONS = {
         "wind gust", "", None
     ),
 }
+
+
+# libtelldus-core is not thread-safe, and Home Assistant polls each entity in its
+# own executor thread: two calls into it at once can segfault the whole Core
+# process (seen 2026-11-17 in tdSensorValue). Every call into tellcore goes
+# through this lock. Re-entrant, since a device command holds it while it
+# sends the first repeat.
+TELLCORE_LOCK = threading.RLock()

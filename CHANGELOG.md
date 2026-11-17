@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-11-17
+
+### Fixed
+- Home Assistant could crash (segfault in `libtelldus-core`'s `tdSensorValue`) while polling sensors: libtelldus-core isn't thread-safe and sensors, covers and setup called it without the lock that switches and lights already used. Every tellcore call now goes through one lock (`TELLCORE_LOCK` in `const.py`), and the datatype check at setup moved off the event loop.
+
 ## [0.3.2] - 2026-10-04
 
 ### Fixed

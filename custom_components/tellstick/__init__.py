@@ -25,11 +25,18 @@ from .const import (
     ISSUE_NEW_SENSOR_PREFIX,
     SIGNAL_TELLCORE_CALLBACK,
     SUBENTRY_TYPE_SENSOR,
+    TELLCORE_LOCK,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.COVER, Platform.LIGHT, Platform.SENSOR, Platform.SWITCH]
+
+
+def _locked(func, *args):
+    """Call into tellcore holding the lock (see TELLCORE_LOCK)."""
+    with TELLCORE_LOCK:
+        return func(*args)
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -118,7 +125,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TellstickConfigEntry) ->
     except OSError as err:
         raise ConfigEntryNotReady("Could not connect to telldusd") from err
 
-    tellcore_devices = await hass.async_add_executor_job(tellcore_lib.devices)
+    tellcore_devices = await hass.async_add_executor_job(_locked, tellcore_lib.devices)
     devices = {device.id: device for device in tellcore_devices}
 
     @callback
@@ -133,7 +140,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TellstickConfigEntry) ->
         )
 
     callback_id = await hass.async_add_executor_job(
-        tellcore_lib.register_device_event, async_handle_callback
+        _locked, tellcore_lib.register_device_event, async_handle_callback
     )
 
     data = TellstickData(
@@ -194,7 +201,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TellstickConfigEntry) ->
         )
 
     data.sensor_callback_id = await hass.async_add_executor_job(
-        tellcore_lib.register_sensor_event, async_handle_sensor_event
+        _locked, tellcore_lib.register_sensor_event, async_handle_sensor_event
     )
 
     async def _async_update_listener(
@@ -216,11 +223,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: TellstickConfigEntry) -
         data = entry.runtime_data
         if data.callback_id is not None:
             await hass.async_add_executor_job(
-                data.tellcore_lib.unregister_callback, data.callback_id
+                _locked, data.tellcore_lib.unregister_callback, data.callback_id
             )
         if data.sensor_callback_id is not None:
             await hass.async_add_executor_job(
-                data.tellcore_lib.unregister_callback, data.sensor_callback_id
+                _locked, data.tellcore_lib.unregister_callback, data.sensor_callback_id
             )
         if data.net_client is not None:
             await hass.async_add_executor_job(data.net_client.stop)

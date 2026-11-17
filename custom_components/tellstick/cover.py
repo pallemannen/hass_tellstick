@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import TellstickConfigEntry
+from .const import TELLCORE_LOCK
 from .entity import TellstickDevice
 
 
@@ -47,17 +48,20 @@ class TellstickCover(TellstickDevice, CoverEntity):
     @override
     def close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
-        self._tellcore_device.down()
+        with TELLCORE_LOCK:
+            self._tellcore_device.down()
 
     @override
     def open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
-        self._tellcore_device.up()
+        with TELLCORE_LOCK:
+            self._tellcore_device.up()
 
     @override
     def stop_cover(self, **kwargs: Any) -> None:
         """Stop the cover."""
-        self._tellcore_device.stop()
+        with TELLCORE_LOCK:
+            self._tellcore_device.stop()
 
     @override
     def _parse_tellcore_data(self, tellcore_data):
