@@ -1,7 +1,6 @@
 """Support for Tellstick."""
 
 import logging
-import threading
 from typing import override
 
 from tellcore.constants import TELLSTICK_DIM, TELLSTICK_TURNOFF, TELLSTICK_TURNON
@@ -10,14 +9,9 @@ from tellcore.library import TelldusError
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import Entity
 
-from .const import SIGNAL_TELLCORE_CALLBACK
+from .const import SIGNAL_TELLCORE_CALLBACK, TELLCORE_LOCK
 
 _LOGGER = logging.getLogger(__name__)
-
-# Use a global tellstick domain lock to avoid getting Tellcore errors when
-# calling concurrently.
-TELLSTICK_LOCK = threading.RLock()
-
 
 class TellstickDevice(Entity):
     """Representation of a Tellstick device.
@@ -68,7 +62,7 @@ class TellstickDevice(Entity):
     def _send_repeated_command(self):
         """Send a tellstick command once and decrease the repeat count."""
 
-        with TELLSTICK_LOCK:
+        with TELLCORE_LOCK:
             if self._repeats_left > 0:
                 self._repeats_left -= 1
                 try:
@@ -80,7 +74,7 @@ class TellstickDevice(Entity):
 
     def _change_device_state(self, new_state, data):
         """Turn on or off the device."""
-        with TELLSTICK_LOCK:
+        with TELLCORE_LOCK:
             # Set the requested state and number of repeats before calling
             # _send_repeated_command the first time. Subsequent calls will be
             # made from the callback. (We don't want to queue a lot of commands
@@ -132,7 +126,7 @@ class TellstickDevice(Entity):
     def _update_from_tellcore(self):
         """Read the current state of the device from the tellcore library."""
 
-        with TELLSTICK_LOCK:
+        with TELLCORE_LOCK:
             try:
                 last_command = self._tellcore_device.last_sent_command(
                     TELLSTICK_TURNON | TELLSTICK_TURNOFF | TELLSTICK_DIM
